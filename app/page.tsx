@@ -54,46 +54,94 @@ export default function Home() {
       reader.onload = function (e) {
         const img = new Image();
         img.onload = function () {
-          // @ts-ignore
-          if (window.EXIF) {
+          try {
             // @ts-ignore
-            window.EXIF.getData(img, function () {
+            if (typeof window !== 'undefined' && window.EXIF) {
               // @ts-ignore
-              const lat = window.EXIF.getTag(this, 'GPSLatitude');
-              // @ts-ignore
-              const lon = window.EXIF.getTag(this, 'GPSLongitude');
-              // @ts-ignore
-              const latRef = window.EXIF.getTag(this, 'GPSLatitudeRef');
-              // @ts-ignore
-              const lonRef = window.EXIF.getTag(this, 'GPSLongitudeRef');
+              window.EXIF.getData(img, function () {
+                try {
+                  // @ts-ignore
+                  const lat = window.EXIF.getTag(this, 'GPSLatitude');
+                  // @ts-ignore
+                  const lon = window.EXIF.getTag(this, 'GPSLongitude');
+                  // @ts-ignore
+                  const latRef = window.EXIF.getTag(this, 'GPSLatitudeRef');
+                  // @ts-ignore
+                  const lonRef = window.EXIF.getTag(this, 'GPSLongitudeRef');
 
-              let latitude = null;
-              let longitude = null;
+                  let latitude = null;
+                  let longitude = null;
 
-              if (lat && lon) {
-                latitude = convertDMSToDD(lat, latRef);
-                longitude = convertDMSToDD(lon, lonRef);
-              }
+                  if (lat && lon) {
+                    latitude = convertDMSToDD(lat, latRef);
+                    longitude = convertDMSToDD(lon, lonRef);
+                  }
 
+                  const imageData: ImageData = {
+                    id: Date.now() + Math.random(),
+                    src: e.target?.result as string,
+                    latitude,
+                    longitude,
+                    filename: file.name,
+                    uploadDate: new Date().toISOString(),
+                  };
+
+                  setImages((prev) => {
+                    const updated = [...prev, imageData];
+                    localStorage.setItem('gpsImages', JSON.stringify(updated));
+                    return updated;
+                  });
+                  resolve();
+                } catch (error) {
+                  console.error('خطأ في معالجة EXIF:', error);
+                  // حفظ الصورة بدون GPS
+                  const imageData: ImageData = {
+                    id: Date.now() + Math.random(),
+                    src: e.target?.result as string,
+                    latitude: null,
+                    longitude: null,
+                    filename: file.name,
+                    uploadDate: new Date().toISOString(),
+                  };
+                  setImages((prev) => {
+                    const updated = [...prev, imageData];
+                    localStorage.setItem('gpsImages', JSON.stringify(updated));
+                    return updated;
+                  });
+                  resolve();
+                }
+              });
+            } else {
+              // EXIF غير متوفر - حفظ بدون GPS
               const imageData: ImageData = {
                 id: Date.now() + Math.random(),
                 src: e.target?.result as string,
-                latitude,
-                longitude,
+                latitude: null,
+                longitude: null,
                 filename: file.name,
                 uploadDate: new Date().toISOString(),
               };
-
               setImages((prev) => {
                 const updated = [...prev, imageData];
                 localStorage.setItem('gpsImages', JSON.stringify(updated));
                 return updated;
               });
               resolve();
-            });
+            }
+          } catch (error) {
+            console.error('خطأ عام:', error);
+            resolve();
           }
         };
+        img.onerror = function() {
+          console.error('فشل تحميل الصورة');
+          resolve();
+        };
         img.src = e.target?.result as string;
+      };
+      reader.onerror = function() {
+        console.error('فشل قراءة الملف');
+        resolve();
       };
       reader.readAsDataURL(file);
     });
@@ -217,7 +265,7 @@ export default function Home() {
           rel="stylesheet"
         />
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/exif-js/2.3.0/exif.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/exif-js" async></script>
       </Head>
 
       <div className="min-h-screen" dir="rtl">

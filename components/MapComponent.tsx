@@ -20,6 +20,8 @@ export default function MapComponent({ lat, lon }: MapComponentProps) {
         mapInstanceRef.current.remove();
       }
 
+      if (!mapRef.current) return;
+
       const map = L.map(mapRef.current, {
         zoomControl: false,
         dragging: false,
