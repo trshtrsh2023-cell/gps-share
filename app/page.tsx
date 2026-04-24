@@ -306,7 +306,7 @@ export default function Home() {
     }
   };
 
-  // مشاركة الموقع فقط كبطاقة خريطة
+  // مشاركة الموقع فقط كرابط خريطة
   const shareLocationOnly = async (index: number) => {
     const imageData = images[index];
     
@@ -316,11 +316,19 @@ export default function Home() {
     }
 
     try {
-      // إنشاء رابط Google Maps
-      const googleMapsUrl = `https://www.google.com/maps?q=${imageData.latitude},${imageData.longitude}`;
+      const lat = imageData.latitude;
+      const lon = imageData.longitude;
       
-      // النص مع الإحداثيات
-      const locationText = `📍 الموقع الجغرافي\n\nالإحداثيات:\n${imageData.latitude.toFixed(6)}, ${imageData.longitude.toFixed(6)}\n\nعرض على الخريطة:\n${googleMapsUrl}`;
+      // التحقق من نوع الجهاز
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      
+      // Apple Maps للآيفون - Google Maps للأندرويد
+      const mapUrl = isIOS 
+        ? `https://maps.apple.com/?ll=${lat},${lon}&q=الموقع المحدد`
+        : `https://www.google.com/maps?q=${lat},${lon}`;
+      
+      // النص البسيط مع الرابط
+      const locationText = `📍 الموقع الجغرافي\n\n${mapUrl}`;
 
       if (navigator.share) {
         await navigator.share({
@@ -329,7 +337,7 @@ export default function Home() {
         });
         showStatus('تم مشاركة الموقع! 📍');
       } else {
-        // نسخ للحافظة
+        // Fallback: نسخ للحافظة
         await navigator.clipboard.writeText(locationText);
         showStatus('تم نسخ الموقع! 📋');
       }
@@ -337,6 +345,28 @@ export default function Home() {
       console.error('خطأ في مشاركة الموقع:', error);
       showStatus('حدث خطأ ❌');
     }
+  };
+
+  const downloadImage = (blob: Blob) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `موقع_${Date.now()}.jpg`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showStatus('تم حفظ الصورة في التنزيلات! 📥');
+  };
+
+      ctx.fillText('الموقع الجغرافي', width / 2, height * 0.75 + 120);
+
+      // الإحداثيات
+      ctx.fillStyle = '#004E89';
+      ctx.font = '28px Courier, monospace';
+      const coordText = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+      ctx.fillText(coordText, width / 2, height * 0.75 + 165);
+
+      canvas.toBlob((blob) => resolve(blob!), 'image/jpeg', 0.95);
+    });
   };
 
   const downloadImage = (blob: Blob) => {
