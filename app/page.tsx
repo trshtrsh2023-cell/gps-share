@@ -147,17 +147,78 @@ export default function Home() {
     });
   };
 
+  // دالة جديدة: حفظ الصورة مع موقع محدد
+  const processImageWithLocation = (file: File, lat: number, lon: number): Promise<void> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const imageData: ImageData = {
+          id: Date.now() + Math.random(),
+          src: e.target?.result as string,
+          latitude: lat,
+          longitude: lon,
+          filename: file.name,
+          uploadDate: new Date().toISOString(),
+        };
+
+        setImages((prev) => {
+          const updated = [...prev, imageData];
+          localStorage.setItem('gpsImages', JSON.stringify(updated));
+          return updated;
+        });
+        resolve();
+      };
+      reader.onerror = function() {
+        console.error('فشل قراءة الملف');
+        resolve();
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, isCamera: boolean) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
     setLoading(true);
-    for (const file of files) {
-      await processImage(file);
+    
+    // إذا كانت من الكاميرا، نحصل على الموقع الحالي
+    if (isCamera && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          // لدينا الموقع! نضيفه للصورة
+          for (const file of files) {
+            await processImageWithLocation(file, position.coords.latitude, position.coords.longitude);
+          }
+          setLoading(false);
+          showStatus('تم التقاط الصورة مع الموقع! 📍');
+          e.target.value = '';
+        },
+        async (error) => {
+          // فشل الحصول على الموقع - نحفظ الصورة بدون GPS
+          console.error('خطأ في الموقع:', error);
+          for (const file of files) {
+            await processImage(file);
+          }
+          setLoading(false);
+          showStatus('تم التقاط الصورة (بدون موقع) 📸');
+          e.target.value = '';
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        }
+      );
+    } else {
+      // من المعرض - نعالج عادي ونحاول نستخرج GPS
+      for (const file of files) {
+        await processImage(file);
+      }
+      setLoading(false);
+      showStatus('تم رفع الصور بنجاح! ✅');
+      e.target.value = '';
     }
-    setLoading(false);
-    showStatus(isCamera ? 'تم التقاط الصورة بنجاح! 📸' : 'تم رفع الصور بنجاح! ✅');
-    e.target.value = '';
   };
 
   const deleteImage = (index: number) => {
