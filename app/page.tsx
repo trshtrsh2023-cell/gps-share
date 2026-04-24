@@ -306,6 +306,39 @@ export default function Home() {
     }
   };
 
+  // مشاركة الموقع فقط كبطاقة خريطة
+  const shareLocationOnly = async (index: number) => {
+    const imageData = images[index];
+    
+    if (!imageData.latitude || !imageData.longitude) {
+      showStatus('لا يوجد موقع لهذه الصورة ❌');
+      return;
+    }
+
+    try {
+      // إنشاء رابط Google Maps
+      const googleMapsUrl = `https://www.google.com/maps?q=${imageData.latitude},${imageData.longitude}`;
+      
+      // النص مع الإحداثيات
+      const locationText = `📍 الموقع الجغرافي\n\nالإحداثيات:\n${imageData.latitude.toFixed(6)}, ${imageData.longitude.toFixed(6)}\n\nعرض على الخريطة:\n${googleMapsUrl}`;
+
+      if (navigator.share) {
+        await navigator.share({
+          title: 'مشاركة الموقع',
+          text: locationText,
+        });
+        showStatus('تم مشاركة الموقع! 📍');
+      } else {
+        // نسخ للحافظة
+        await navigator.clipboard.writeText(locationText);
+        showStatus('تم نسخ الموقع! 📋');
+      }
+    } catch (error) {
+      console.error('خطأ في مشاركة الموقع:', error);
+      showStatus('حدث خطأ ❌');
+    }
+  };
+
   const downloadImage = (blob: Blob) => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -413,9 +446,21 @@ export default function Home() {
                       : '⚠️ لا توجد بيانات GPS في هذه الصورة'}
                   </div>
                   {img.latitude && img.longitude ? (
-                    <button className="share-btn" onClick={() => shareImage(index)}>
-                      📤 مشاركة الصورة مع الموقع
-                    </button>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      <button className="share-btn" onClick={() => shareImage(index)}>
+                        🖼️ مشاركة الصورة مع الموقع
+                      </button>
+                      <button 
+                        className="share-btn location-share-btn" 
+                        onClick={() => shareLocationOnly(index)}
+                        style={{ 
+                          background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+                          boxShadow: '0 4px 15px rgba(16, 185, 129, 0.3)'
+                        }}
+                      >
+                        📍 مشاركة الموقع فقط
+                      </button>
+                    </div>
                   ) : (
                     <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
                       هذه الصورة لا تحتوي على بيانات موقع
@@ -700,6 +745,10 @@ export default function Home() {
 
           .share-btn:active {
             transform: scale(0.98);
+          }
+
+          .location-share-btn:hover {
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.5) !important;
           }
 
           .loading {
